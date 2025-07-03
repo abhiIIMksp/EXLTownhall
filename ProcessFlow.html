@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Execution Process Flow</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .flow-card {
+            border-left: 4px solid #0d6efd;
+            transition: all 0.3s ease;
+        }
+        .flow-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .arrow {
+            text-align: center;
+            font-size: 24px;
+            color: #6c757d;
+            margin: 10px 0;
+        }
+        .badge-custom {
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        .note-box {
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="text-center mb-5">
+                    <h1 class="display-5 fw-bold">Column Classification Process Flow</h1>
+                    <p class="lead text-muted">How tables are classified into PI/SPI/Non-PI categories</p>
+                </div>
+
+                <!-- Workflow Overview -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Overall Workflow</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-4 mb-3">
+                                <div class="flow-card p-3 h-100">
+                                    <h5>Bulk Classification</h5>
+                                    <p class="text-muted">Processes entire schema when table name is null</p>
+                                    <span class="badge bg-primary badge-custom">Initial Step</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="flow-card p-3 h-100">
+                                    <h5>Table Level Classification</h5>
+                                    <p class="text-muted">Runs for each table (integrated with Bulk)</p>
+                                    <span class="badge bg-info text-dark badge-custom">Core Process</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="flow-card p-3 h-100">
+                                    <h5>Atlan Update</h5>
+                                    <p class="text-muted">Daily update of classified columns</p>
+                                    <span class="badge bg-success badge-custom">Separate Step</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Process Flow -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-dark">
+                        <h5 class="mb-0">Table Classification Process</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Step 0 -->
+                        <div class="flow-card p-4 mb-3 bg-white rounded">
+                            <div class="d-flex">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 30px; height: 30px; line-height: 30px;">0</span>
+                                <div>
+                                    <h5>Initial Setup</h5>
+                                    <p class="mb-0">Load sentence-transformer package and create cosine similarity function. Prepare category dictionaries with abbreviations.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="arrow" style="font-size: 48px; font-weight: bold; color: #000;">↓</div>
+
+                        <!-- Step 1 -->
+                        <div class="flow-card p-4 mb-3 bg-white rounded">
+                            <div class="d-flex">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 30px; height: 30px; line-height: 30px;">1</span>
+                                <div>
+                                    <h5>Fetch & Filter Columns</h5>
+                                    <ul class="mb-0">
+                                        <li>Fetch all columns from the specified table</li>
+                                        <li>Check against AtlanCheck table for existing classifications</li>
+                                        <li>Remove pre-classified columns from processing list</li>
+                                        <li>Pre-classified columns marked as <span class="badge bg-secondary">FromAtlan</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="arrow" style="font-size: 48px; font-weight: bold; color: #000;">↓</div>
+
+
+                        <!-- Step 2 -->
+                        <div class="flow-card p-4 mb-3 bg-white rounded">
+                            <div class="d-flex">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 30px; height: 30px; line-height: 30px;">2</span>
+                                <div>
+                                    <h5>Cosine Similarity Classification</h5>
+                                    <ul class="mb-0">
+                                        <li>Process remaining columns through cosine similarity function (87% threshold)</li>
+                                        <li>Classify matches into:
+                                            <span class="badge bg-danger">standalone_PI</span>,
+                                            <span class="badge bg-warning text-dark">conditional_PI</span>,
+                                            <span class="badge bg-info text-dark">standalone_SPI</span>,
+                                            <span class="badge bg-purple text-primary">conditional_SPI</span>
+                                        </li>
+                                        <li>Flag columns containing specific keywords but not classified</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="arrow" style="font-size: 48px; font-weight: bold; color: #000;">↓</div>
+
+                        <!-- Step 3 -->
+                        <div class="flow-card p-4 mb-3 bg-white rounded">
+                            <div class="d-flex">
+                                <span class="badge bg-primary rounded-circle me-3" style="width: 30px; height: 30px; line-height: 30px;">3</span>
+                                <div>
+                                    <h5>Regex Validation</h5>
+                                    <ul class="mb-0">
+                                        <li>For each classified column, test 500 not-null records against category regex patterns</li>
+                                        <li>Columns passing both steps 2 & 3: <span class="badge bg-success">High confidence</span></li>
+                                        <li>Columns passing step 2 only: <span class="badge bg-warning text-dark">Medium confidence</span></li>
+                                        <li>Flagged columns: <span class="badge bg-secondary">Low confidence</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="arrow" style="font-size: 48px; font-weight: bold; color: #000;">↓</div>
+
+                        <!-- Final Step -->
+                        <div class="flow-card p-4 bg-white rounded">
+                            <div class="d-flex">
+                                <span class="badge bg-success rounded-circle me-3" style="width: 30px; height: 30px; line-height: 30px;">4</span>
+                                <div>
+                                    <h5>Final Classification</h5>
+                                    <ul class="mb-0">
+                                        <li>All unclassified columns marked as <span class="badge bg-dark">Non_PI</span></li>
+                                        <li>Results stored with classification date</li>
+                                        <li>Subsequent runs update existing classifications with new results and modified date</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Notes -->
+                <div class="note-box">
+                    <h5><i class="bi bi-info-circle-fill text-warning me-2"></i>Important Notes</h5>
+                    <ul class="mb-0">
+                        <li>Bulk classification can only be run once per schema - subsequent runs must specify individual tables</li>
+                        <li>Atlan workflow runs daily to sync classifications to <code>information_technology_prod.privacy_rights_automation.Atlan_check</code></li>
+                        <li>Table structures are assumed to remain stable between classification runs</li>
+                        <li>Resource-intensive processes are optimized for single-table runs after initial bulk classification</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

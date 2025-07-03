@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CDRM Classification Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0d6efd;
+      --dark-blue: #084298;
+      --light-bg: #f1f8ff;
+      --card-bg: #ffffff;
+    }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--light-bg);
+    }
+    
+    .sidebar {
+      background: linear-gradient(135deg, var(--dark-blue) 0%, var(--primary-blue) 100%);
+      color: white;
+      height: 100vh;
+      position: fixed;
+      padding: 20px;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+    
+    .main-content {
+      margin-left: 30%;
+      width: 70%;
+      padding: 30px;
+      background-color: var(--light-bg);
+    }
+    
+    .nav-brand {
+      font-weight: 700;
+      color: white !important;
+    }
+    
+    .nav-link {
+      color: rgba(255,255,255,0.8) !important;
+    }
+    
+    .nav-link:hover, .nav-link.active {
+      color: white !important;
+    }
+    
+    .form-label {
+      font-weight: 500;
+      color: rgba(255,255,255,0.9);
+    }
+    
+    .card-toggle {
+      max-height: 30vh;
+      overflow: hidden;
+      transition: max-height 0.4s ease;
+      position: relative;
+    }
+    
+    .card-toggle.expanded {
+      max-height: 1000px;
+    }
+    
+    .classification-card {
+      border-radius: 8px;
+      border: none;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      transition: transform 0.2s;
+    }
+    
+    .classification-card:hover {
+      transform: translateY(-2px);
+    }
+    
+    .non-pi-list li {
+      display: inline-block;
+      width: 33.3%;
+      box-sizing: border-box;
+      padding: 5px 10px;
+      font-size: 14px;
+    }
+    
+    .btn-cdrm {
+      background: white;
+      color: var(--primary-blue);
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 10px 20px;
+      transition: all 0.3s;
+    }
+    
+    .btn-cdrm:hover {
+      background: rgba(255,255,255,0.9);
+      transform: translateY(-1px);
+    }
+    
+    .chart-container {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark" style="background: var(--dark-blue);">
+    <div class="container-fluid">
+      <a class="navbar-brand nav-brand" href="#">
+        <i class="fas fa-shield-alt me-2"></i>CDRM Dashboard
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link active" href="#"><i class="fas fa-project-diagram me-1"></i> Classification</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#"><i class="fas fa-chart-bar me-1"></i> Analytics</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="d-flex">
+    <!-- LEFT PANEL -->
+    <div class="sidebar" style="width:30%;">
+      <h3 class="mb-4"><i class="fas fa-filter me-2"></i>Data Selector</h3>
+
+      <div class="mb-4">
+        <label for="catalogSelect" class="form-label">Catalog</label>
+        <select id="catalogSelect" class="form-select bg-dark text-white border-dark" onchange="updateSchemas()">
+          <option value="">Select Catalog</option>
+          <option value="gmdataassets">gmdataassets</option>
+          <option value="information_technology_dev">information_technology_dev</option>
+        </select>
+      </div>
+
+      <div class="mb-4">
+        <label for="schemaSelect" class="form-label">Schema</label>
+        <select id="schemaSelect" class="form-select bg-dark text-white border-dark" onchange="updateTables()">
+          <option value="">Select Schema</option>
+        </select>
+      </div>
+
+      <div class="mb-4">
+        <label for="tableSelect" class="form-label">Table</label>
+        <select id="tableSelect" class="form-select bg-dark text-white border-dark">
+          <option value="">Select Table</option>
+        </select>
+      </div>
+
+      <button class="btn btn-cdrm w-100 mt-3" onclick="classifyTable()">
+        <i class="fas fa-magnifying-glass me-2"></i>Classify
+      </button>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="main-content">
+      <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+          <div class="card classification-card" style="display: none; background-color: #d4edda;" id="pi_conditional_card">
+            <div class="card-body">
+              <h5 class="card-title text-success">
+                <i class="fas fa-user-circle me-2"></i>PI Conditional
+              </h5>
+              <ul id="pi_conditional_list" class="mb-0"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="card classification-card" style="display: none; background-color: #c3e6cb;" id="spi_conditional_card">
+            <div class="card-body">
+              <h5 class="card-title text-success">
+                <i class="fas fa-user-shield me-2"></i>SPI Conditional
+              </h5>
+              <ul id="spi_conditional_list" class="mb-0"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="card classification-card" style="display: none; background-color: #cce5ff;" id="pi_standalone_card">
+            <div class="card-body">
+              <h5 class="card-title text-primary">
+                <i class="fas fa-id-card me-2"></i>PI Standalone
+              </h5>
+              <ul id="pi_standalone_list" class="mb-0"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="card classification-card" style="display: none; background-color: #b8daff;" id="spi_standalone_card">
+            <div class="card-body">
+              <h5 class="card-title text-primary">
+                <i class="fas fa-id-card-alt me-2"></i>SPI Standalone
+              </h5>
+              <ul id="spi_standalone_list" class="mb-0"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <div class="card classification-card card-toggle" id="non_pi_card" style="display: none;">
+          <div class="card-body">
+            <h5 class="card-title text-secondary">
+              <i class="fas fa-database me-2"></i>Non-PI Data
+            </h5>
+            <ul id="non_pi_list" class="non-pi-list mb-0"></ul>
+          </div>
+        </div>
+        <div class="text-end mt-2" style="display: none;" id="seemore_button">
+          <button class="btn btn-link text-primary p-0" id="toggleButton">
+            <i class="fas fa-chevron-down me-1"></i>See More
+          </button>
+        </div>
+      </div>
+
+      <!-- BAR CHART -->
+      <div class="chart-container mt-4">
+        <h5 class="mb-3 text-primary">
+          <i class="fas fa-chart-bar me-2"></i>Classification Overview
+        </h5>
+        <canvas id="classificationChart" height="300"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Your existing JavaScript code remains exactly the same
+    const catalogData = {
+      gmdataassets: {
+        dealer360_public: ['fs_rel_biz_assoc'],
+        dl_edge_base_gsp_49612_base_oagmsa1p_gsp: ['account', 'contact', 'vehicle']
+      },
+      information_technology_dev: {
+        privacy_rights_automation: ['ev_svc']
+      }
+    };
+
+    function updateSchemas() {
+      const catalog = document.getElementById("catalogSelect").value;
+      const schemaSelect = document.getElementById("schemaSelect");
+      const tableSelect = document.getElementById("tableSelect");
+
+      schemaSelect.innerHTML = '<option value="">Select Schema</option>';
+      tableSelect.innerHTML = '<option value="">Select Table</option>';
+
+      if (catalogData[catalog]) {
+        Object.keys(catalogData[catalog]).forEach(schema => {
+          const opt = document.createElement("option");
+          opt.value = schema;
+          opt.textContent = schema;
+          schemaSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function updateTables() {
+      const catalog = document.getElementById("catalogSelect").value;
+      const schema = document.getElementById("schemaSelect").value;
+      const tableSelect = document.getElementById("tableSelect");
+
+      tableSelect.innerHTML = '<option value="">Select Table</option>';
+
+      if (catalogData[catalog] && catalogData[catalog][schema]) {
+        catalogData[catalog][schema].forEach(table => {
+          const opt = document.createElement("option");
+          opt.value = table;
+          opt.textContent = table;
+          tableSelect.appendChild(opt);
+        });
+      }
+    }
+
+    function classifyTable() {
+      card1 = document.getElementById("pi_conditional_card");
+      card2 = document.getElementById("spi_conditional_card");
+      card3 = document.getElementById("pi_standalone_card");
+      card4 = document.getElementById("spi_standalone_card");
+      card5 = document.getElementById("non_pi_card");
+      button_see = document.getElementById("seemore_button");
+
+      card1.style.display = "block";
+      card2.style.display = "block";
+      card3.style.display = "block";
+      card4.style.display = "block";
+      card5.style.display = "block";
+      button_see.style.display = "block";
+
+      const table = document.getElementById("tableSelect").value;
+
+      const sampleColumns = {
+        fs_rel_biz_assoc: {
+          pi_conditional: [],
+          spi_conditional: [],
+          pi_standalone: [],
+          spi_standalone: [],
+          non_pi: ['src_sys_id', 'biz_assoc_id', 'sell_src_cd', 'veh_grp_cd', 'biz_assoc_rel_type', 'rel_stat_cd', 'rel_biz_assoc_id', 'rel_eff_dt', 'rel_end_dt', 'rel_type_desc', 'valid_site_rel_type_flg', 'valid_biz_assoc_rel_type_flg', 'inc_nm', 'biz_assoc_stat_cd', 'biz_assoc_type_nbr', 'biz_assoc_type_nbr_desc', 'biz_assoc_type_cd', 'biz_assoc_type_cd_desc', 'biz_mgmt_sell_src_cd', 'biz_assoc_eff_dt', 'biz_assoc_term_dt', 'rel_inc_nm', 'rel_biz_assoc_stat_cd', 'rel_biz_assoc_type_nbr', 'rel_biz_assoc_type_nbr_desc', 'rel_biz_assoc_type_cd', 'rel_biz_assoc_type_cd_desc', 'rel_biz_mgmt_sell_src_cd', 'rel_biz_assoc_eff_dt', 'rel_biz_assoc_term_dt', 'meas_cnt', 'src_sys_uniq_prim_key_val', 'src_sys_uniq_prim_key_col_val', 'dw_anomaly_flg', 'dw_mod_ts', 'dw_job_id', 'src_sys_iud_cd']
+        },
+        account: {
+          pi_conditional: [],
+          spi_conditional: ['account_number'],
+          pi_standalone: ['account_name'],
+          spi_standalone: [],
+          non_pi: ['dw_mod_ts', 'dw_job_id', 'dw_sum_sk', 'gg_src_table', 'gg_src_sys_iud_cd', 'gg_src_sys_upd_ts', 'gg_current_ts', 'gg_trail_pos', 'gg_txn_csn', 'gg_txn_num', 'gg_primary_keys', 'account_id', 'account_type', 'description', 'status_code', 'status_date', 'dealer_type', 'custom_data', 'onstar_billing_number', 'payment_method_id', 'billing_day', 'billing_day_updated_on', 'last_active_on', 'created_by', 'created_on', 'updated_by', 'updated_on', 'created_timstm', 'created_user_id', 'updated_timstm', 'updated_user_id', 'vat_number', 'vat_confirmation_number', 'vat_account_name', 'parent_account_id', 'integration_id', 'integration_number', 'tax_id_type', 'tax_id_number', 'organization_number']
+        },
+        contact: {
+          pi_conditional: [],
+          spi_conditional: [],
+          pi_standalone: [],
+          spi_standalone: [],
+          non_pi: ['dw_mod_ts', 'dw_job_id', 'dw_sum_sk', 'gg_src_table', 'gg_src_sys_iud_cd', 'gg_src_sys_upd_ts', 'gg_current_ts', 'gg_trail_pos', 'gg_txn_csn', 'gg_txn_num', 'gg_primary_keys', 'owner_id', 'owner_type', 'contact_type', 'contact_label', 'contact_description', 'contact_language', 'custom_data', 'created_by', 'created_on', 'updated_by', 'updated_on', 'created_timstm', 'created_user_id', 'updated_timstm', 'updated_user_id', 'normalized']
+        },
+        vehicle: {
+          pi_conditional: ['expiration_date'],
+          spi_conditional: [],
+          pi_standalone: ['vehicle_vin', 'license_plate'],
+          spi_standalone: [],
+          non_pi: ['architecture', 'body_style', 'body_type', 'condition', 'connected_on', 'connectivity_status', 'custom_data', 'delivery_date', 'discrepancy_data', 'drivetrain', 'dw_job_id', 'dw_mod_ts', 'dw_sum_sk', 'engine_type', 'fuel_type', 'gen_id', 'gg_current_ts', 'gg_primary_keys', 'gg_src_sys_iud_cd', 'gg_src_sys_upd_ts', 'gg_src_table', 'gg_trail_pos', 'gg_txn_csn', 'gg_txn_num', 'has_discrepancy', 'ignition_status', 'ignition_status_date', 'image_url', 'is_connected', 'is_gm', 'is_onstar_compatible', 'last_trip_end_time', 'license_country', 'license_state', 'make_name', 'model_name', 'model_year', 'nickname', 'optin_state', 'optin_state_date', 'powertrain', 'r_created_by', 'r_created_on', 'r_created_user_id', 'r_updated_by', 'r_updated_on', 'r_updated_user_id', 'registration_date', 'status_code', 'status_date', 'stid', 'stock_number', 'subscriber_number', 'subscriber_type', 'tank_capacity', 'unit_state', 'vehicle_category', 'vehicle_color', 'vehicle_fan', 'vehicle_id', 'vehicle_inter_color', 'vehicle_sn', 'vehicle_trim', 'vehicle_type']
+        },
+        ev_svc: {
+          pi_conditional: ['odo_read'],
+          spi_conditional: [],
+          pi_standalone: ['vin', 'lat', 'lng'],
+          spi_standalone: [],
+          non_pi: ['make', 'model', 'year', 'datagrpid', 'uom', 'cts', 'eventtype', 'diagnostics', 'sourcetransactionid', 'ambient_air_temperature', 'charge_mode_rate_type', 'charge_mode_type', 'charge_state', 'departure_time_fri', 'departure_time_mon', 'departure_time_sat', 'departure_time_sun', 'departure_time_thu', 'departure_time_tue', 'departure_time_wed', 'drive_cycle_electrical_energy_economy', 'elv', 'ev_charge_state', 'ev_plug_state', 'ev_range', 'hv_battery_charge_complete_day', 'hv_battery_charge_complete_hour', 'hv_battery_charge_complete_minute', 'hv_battery_total_usable_energy', 'ign_cyl', 'lifetime_energy_used', 'location_base_charge_setting', 'vehicle_location_status_region']
+        }
+      };
+
+      const data = sampleColumns[table] || {};
+
+      // Populate cards
+      ['pi_conditional', 'spi_conditional', 'pi_standalone', 'spi_standalone', 'non_pi'].forEach(key => {
+        const listEl = document.getElementById(`${key}_list`);
+        listEl.innerHTML = '';
+        (data[key] || []).forEach(col => {
+          const li = document.createElement('li');
+          li.textContent = col;
+          listEl.appendChild(li);
+        });
+      });
+
+      // Update Chart
+      const ctx = document.getElementById('classificationChart').getContext('2d');
+      if (window.chartInstance) window.chartInstance.destroy();
+      window.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['PI Conditional', 'SPI Conditional', 'PI Standalone', 'SPI Standalone', 'Non-PI'],
+          datasets: [{
+            label: 'Column Count',
+            data: [
+              data.pi_conditional?.length || 0,
+              data.spi_conditional?.length || 0,
+              data.pi_standalone?.length || 0,
+              data.spi_standalone?.length || 0,
+              data.non_pi?.length || 0
+            ],
+            backgroundColor: [
+              '#d4edda', // PI Conditional
+              '#c3e6cb', // SPI Conditional
+              '#cce5ff', // PI Standalone
+              '#b8daff', // SPI Standalone
+              '#e2e3e5'  // Non-PI
+            ],
+            borderColor: [
+              '#28a745', // PI Conditional
+              '#218838', // SPI Conditional
+              '#007bff', // PI Standalone
+              '#0069d9', // SPI Standalone
+              '#d6d8d9'  // Non-PI
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              type: 'logarithmic',
+              beginAtZero: false,
+              title: {
+                display: true,
+                text: 'Count (Log Scale)'
+              },
+              ticks: {
+                callback: function (value) {
+                  if (value === 1 || value === 10 || value === 100 || value === 1000 || value === 10000) {
+                    return value;
+                  }
+                  return '';
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false 
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  return `${context.dataset.label}: ${context.raw}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+  <script>
+    const seeMoreBtn = document.getElementById('toggleButton');
+    const nonPiCard = document.getElementById('non_pi_card');
+    
+    seeMoreBtn.addEventListener('click', () => {
+      if (seeMoreBtn.innerHTML.includes('See More')) {
+        nonPiCard.style.maxHeight = 'none';
+        seeMoreBtn.innerHTML = '<i class="fas fa-chevron-up me-1"></i>See Less';
+      } else {
+        nonPiCard.style.maxHeight = '30vh';
+        seeMoreBtn.innerHTML = '<i class="fas fa-chevron-down me-1"></i>See More';
+      }
+    });
+  </script>
+</body>
+</html>
